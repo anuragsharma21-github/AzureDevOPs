@@ -1,0 +1,483 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vm_name": {
+      "type": "string"
+    },
+    "disk_size": {
+      "type": "int"
+    },
+    "vnet_name": {
+      "defaultValue": "db2VNET",
+      "type": "string"
+    },
+    "nsg_name": {
+      "defaultValue": "db2",
+      "type": "string"
+    },
+    "pubip_name": {
+      "defaultValue": "db2PublicIP",
+      "type": "string"
+    },
+    "net_cidr": {
+      "defaultValue": "10.0.0.0/16",
+      "type": "string"
+    },
+    "subnet_cidr": {
+      "defaultValue": "10.0.0.0/24",
+      "type": "string"
+    },
+    "secrule_allowdb2_name": {
+      "defaultValue": "allow-db2",
+      "type": "string"
+    },
+    "secrule_allowssh_name": {
+      "defaultValue": "allow-ssh",
+      "type": "string"
+    },
+    "location": {
+      "defaultValue": "northeurope",
+      "type": "string"
+    },
+    "img_publisher": {
+      "defaultValue": "RedHat",
+      "type": "string"
+    },
+    "img_offer": {
+      "defaultValue": "RHEL",
+      "type": "string"
+    },
+    "img_sku": {
+      "defaultValue": "8.2",
+      "type": "string"
+    },
+    "img_version": {
+      "defaultValue": "latest",
+      "type": "string"
+    },
+    "vm_size": {
+      "defaultValue": "Standard_DS2_v2",
+      "type": "string"
+    },
+    "script_url": {
+      "type": "string"
+    },
+
+    "sshUserName": {
+      "type": "string",
+      "metadata": {
+        "description": "These credentials can be used to remotely access the cluster."
+      }
+    },
+    "sshPublicKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "This field must be a valid SSH public key."
+      }
+    }
+  },
+  "variables": {
+    "sshKeyPath": "[concat('/home/',parameters('sshUserName'),'/.ssh/authorized_keys')]",
+    "nic_name": "db2nic",
+    "subnet_name": "db2subnet",
+    "script_name": "./db2_setup_xfs.sh"
+  },
+  "resources": [
+    {
+      "comments": "deploy a db2 instance on rhel'.",
+      "type": "Microsoft.Compute/virtualMachines",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic_name'))]"
+      ],
+      "name": "[parameters('vm_name')]",
+      "apiVersion": "2017-03-30",
+      "location": "[parameters('location')]",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vm_size')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('img_publisher')]",
+            "offer": "[parameters('img_offer')]",
+            "sku": "[parameters('img_sku')]",
+            "version": "[parameters('img_version')]"
+          },
+          "osDisk": {
+            "osType": "Linux",
+            "name": "[concat(parameters('vm_name'),'_OsDisk_1')]",
+            "createOption": "FromImage",
+            "caching": "ReadWrite",
+            "managedDisk": {
+              "storageAccountType": "Premium_LRS"
+            },
+            "diskSizeGB": 64
+          },
+          "dataDisks": [
+            {
+              "lun": 0,
+              "name": "[concat(parameters('vm_name'),'_datadisk1')]",
+              "createOption": "Empty",
+              "caching": "None",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              },
+              "diskSizeGB": "[concat(parameters('disk_size'))]"
+            },
+            {
+              "lun": 1,
+              "name": "[concat(parameters('vm_name'),'_datadisk2')]",
+              "createOption": "Empty",
+              "caching": "None",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              },
+              "diskSizeGB": "[concat(parameters('disk_size'))]"
+            },
+            {
+              "lun": 2,
+              "name": "[concat(parameters('vm_name'),'_datadisk3')]",
+              "createOption": "Empty",
+              "caching": "None",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              },
+              "diskSizeGB": "[concat(parameters('disk_size'))]"
+            },
+            {
+              "lun": 3,
+              "name": "[concat(parameters('vm_name'),'_datadisk4')]",
+              "createOption": "Empty",
+              "caching": "None",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              },
+              "diskSizeGB": "[concat(parameters('disk_size'))]"
+            }
+          ]
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm_name')]",
+          "adminUsername": "[parameters('sshUserName')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "[variables('sshKeyPath')]",
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+          },
+          "secrets": []
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nic_name'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "comments": "db2nic",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic_name')]",
+      "apiVersion": "2017-10-01",
+      "location": "[parameters('location')]",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "provisioningState": "Succeeded",
+        "ipConfigurations": [
+          {
+            "name": "ipconfigdb2",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('pubip_name'))]"
+              },
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnet_name'), variables('subnet_name'))]"
+              },
+              "primary": true,
+              "privateIPAddressVersion": "IPv4"
+            }
+          }
+        ],
+        "enableIPForwarding": false,
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_name'))]"
+        },
+        "primary": true,
+        "virtualMachine": {
+          "id": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vm_name'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', parameters('pubip_name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnet_name'), variables('subnet_name'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vm_name'),'/configuredb2')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('vm_name'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[concat(parameters('script_url'))]"
+          ],
+          "commandToExecute": "[concat(variables('script_name'),' ')]"
+        }
+      }
+    },
+    {
+      "comments": "nsg",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('nsg_name')]",
+      "apiVersion": "2017-10-01",
+      "location": "[parameters('location')]",
+      "scale": null,
+      "properties": {
+        "securityRules": [
+          {
+            "name": "[concat('allow-', parameters('nsg_name'))]",
+            "properties": {
+              "description": "[concat(parameters('nsg_name'),'DB2', parameters('secrule_allowdb2_name'))]",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "50000",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "allow-ssh",
+            "properties": {
+              "description": "[concat(parameters('nsg_name'),'DB2', parameters('secrule_allowssh_name'))]",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          }
+        ],
+        "defaultSecurityRules": [
+          {
+            "name": "AllowVnetInBound",
+            "etag": "W/\"f2b6b0e0-e3b1-42c9-b67b-0dbcd0503199\"",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Allow inbound traffic from all VMs in VNET",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "AllowAzureLoadBalancerInBound",
+            "etag": "W/\"f2b6b0e0-e3b1-42c9-b67b-0dbcd0503199\"",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Allow inbound traffic from azure load balancer",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "AzureLoadBalancer",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "DenyAllInBound",
+            "etag": "W/\"f2b6b0e0-e3b1-42c9-b67b-0dbcd0503199\"",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Deny all inbound traffic",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "AllowVnetOutBound",
+            "etag": "W/\"f2b6b0e0-e3b1-42c9-b67b-0dbcd0503199\"",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Outbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "AllowInternetOutBound",
+            "etag": "W/\"f2b6b0e0-e3b1-42c9-b67b-0dbcd0503199\"",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Allow outbound traffic from all VMs to Internet",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "Internet",
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Outbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "DenyAllOutBound",
+            "etag": "W/\"f2b6b0e0-e3b1-42c9-b67b-0dbcd0503199\"",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Deny all outbound traffic",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Outbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          }
+        ]
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "pubip",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "sku": {
+        "name": "Basic"
+      },
+      "name": "[parameters('pubip_name')]",
+      "apiVersion": "2017-10-01",
+      "location": "[parameters('location')]",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "publicIPAddressVersion": "IPv4",
+        "publicIPAllocationMethod": "Static",
+        "idleTimeoutInMinutes": 4
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "vnet",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[parameters('vnet_name')]",
+      "apiVersion": "2017-10-01",
+      "location": "[parameters('location')]",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "provisioningState": "Succeeded",
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('net_cidr')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "db2Subnet",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "addressPrefix": "[parameters('subnet_cidr')]"
+            }
+          }
+        ],
+        "virtualNetworkPeerings": [],
+        "enableDdosProtection": false,
+        "enableVmProtection": false
+      },
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "name": "[concat(parameters('vnet_name'), '/', variables('subnet_name'))]",
+      "apiVersion": "2017-10-01",
+      "scale": null,
+      "properties": {
+        "addressPrefix": "[parameters('subnet_cidr')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnet_name'))]"
+      ]
+    }
+  ],
+  "outputs": {
+   
+  }
+}
