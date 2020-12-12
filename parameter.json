@@ -1,0 +1,21 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+       "vm_name": {
+            "value": "DNBRSVM00011"
+        },
+        "disk_size": {
+            "value": 50
+        },
+        "sshUserName": {
+            "value": "db2admin"
+        },
+        "sshPublicKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEArtBX98UgeEYFRjYYEIStvd4cVYWNvsjbDF5ucP1kKKcYOoxiL19bOkhaBq6vSRBOz8QCjM4u4dWrShYgNQdcWKQkyBcbhQNKYBy7XPpaln9tvnc9s4Fp5hkG6xoYAi2RC42bT8xCD8r8Kk9+zxcYfByo9HC02DxdjLXWwGXzz1WY4KYHsKGQVEaXGrFg36D6BLI4xX6G8VDPU6ee3dBKUjSAfeiKa3xwvsTeqeADJ7ph2Bwx0bAJc0hIzTeb4Dwfg8DplOJw36rcjxCSn0c2PAoSlj6ew8eLwtHy17O8AH+SdoXGecZTcEveh4IXRQtWpIwn6SlRpe3ikyksqG0lIQ== rsa-key-20201129"
+      },
+        "script_url": {
+            "value": "https://db2repo.blob.core.windows.net/repo/db2_setup_xfs.sh"
+        }
+    }
+}
