@@ -21,3 +21,16 @@ steps:
   inputs:
     PathtoPublish: '$(build.artifactstagingdirectory)'
     ArtifactName: 'drop'
+
+- task: AzureResourceManagerTemplateDeployment@3
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: 'Free Trial (d85d014d-f26a-4dc7-be57-8b31b72b3247)'
+    subscriptionId: 'd85d014d-f26a-4dc7-be57-8b31b72b3247'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: 'db2'
+    location: 'North Europe'
+    templateLocation: 'URL of the file'
+    csmFileLink: 'https://github.com/anuragsharma21-github/AzureDevOPs/blob/main/rhelvm_db2.json'
+    csmParametersFileLink: 'https://github.com/anuragsharma21-github/AzureDevOPs/blob/main/parameter.json'
+    deploymentMode: 'Incremental'
