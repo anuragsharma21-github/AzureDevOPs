@@ -22,6 +22,7 @@ steps:
     PathtoPublish: '$(build.artifactstagingdirectory)'
     ArtifactName: 'drop'
 
+
 - task: AzureResourceManagerTemplateDeployment@3
   inputs:
     deploymentScope: 'Resource Group'
@@ -30,7 +31,7 @@ steps:
     action: 'Create Or Update Resource Group'
     resourceGroupName: 'db2'
     location: 'North Europe'
-    templateLocation: 'URL of the file'
-    csmFileLink: 'https://github.com/anuragsharma21-github/AzureDevOPs/blob/main/rhelvm_db2.json'
-    csmParametersFileLink: 'https://github.com/anuragsharma21-github/AzureDevOPs/blob/main/parameter.json'
+    templateLocation: 'Linked artifact'
+    csmFile: 'rhelvm_db2.json'
+    csmParametersFile: 'parameter.json'
     deploymentMode: 'Incremental'
