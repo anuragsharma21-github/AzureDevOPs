@@ -5,7 +5,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-	  app: php-apache
+      app: php-apache
   replicas: 1
   template:
     metadata:
